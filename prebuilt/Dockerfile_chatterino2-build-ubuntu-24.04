@@ -1,0 +1,300 @@
+# cmake
+FROM ubuntu:24.04 AS build-cmake
+
+ARG CMAKE_VERSION=3.28.1
+ARG CMAKE_SHA256SUM=15e94f83e647f7d620a140a7a5da76349fc47a1bfed66d0f5cdee8e7344079ad
+
+ARG NUM_JOBS=26
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LC_ALL=en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US.UTF-8
+
+RUN <<EOF
+set -e
+
+apt-get update
+
+apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    libssl-dev \
+    locales \
+    locales-all \
+    curl
+
+apt-get clean
+EOF
+
+# Install CMake
+RUN <<EOF
+set -e
+mkdir /tmp/cmake
+cd /tmp/cmake
+curl --location --output cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz
+echo "${CMAKE_SHA256SUM} cmake.tar.gz" | sha256sum --check --status
+tar xzf cmake.tar.gz
+cd cmake-${CMAKE_VERSION}
+./bootstrap --prefix=/usr/local-cmake
+make -j${NUM_JOBS}
+make install
+rm -rf /tmp/cmake
+EOF
+
+
+
+# boost
+FROM ubuntu:24.04 AS build-boost
+
+ARG BOOST_VERSION=1.84.0
+ARG BOOST_SHA256SUM=cc4b893acf645c9d4b698e9a0f08ca8846aa5d6c68275c14c3e7949c24109454
+
+ARG NUM_JOBS=26
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LC_ALL=en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US.UTF-8
+
+# COPY --from=build-cmake /usr/local-cmake /usr/local-cmake
+
+RUN <<EOF
+set -e
+
+apt-get update
+
+apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    libssl-dev \
+    locales \
+    locales-all \
+    curl
+
+apt-get clean
+EOF
+
+RUN <<EOF
+set -e
+mkdir /tmp/boost
+cd /tmp/boost
+BOOST_VERSION_MOD=$(echo $BOOST_VERSION | tr . _)
+curl --location --output boost.tar.bz2 https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_MOD}.tar.bz2
+echo "$BOOST_SHA256SUM boost.tar.bz2" | sha256sum --check --status
+tar --bzip2 -xf boost.tar.bz2
+cd boost_${BOOST_VERSION_MOD}
+./bootstrap.sh --prefix=/usr/local-boost
+./b2 install
+rm -rf /tmp/boost
+EOF
+
+
+
+# Qt
+FROM ubuntu:24.04 AS build-qt
+
+ARG QT_TAG=v6.7.2
+
+ARG NUM_JOBS=26
+
+COPY --from=build-cmake /usr/local-cmake /usr/local-cmake
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LC_ALL=en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US.UTF-8
+ENV PATH="/usr/local-cmake/bin:${PATH}"
+
+RUN <<EOF
+set -e
+
+apt-get update
+
+apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    libssl-dev \
+    locales \
+    locales-all \
+    curl \
+    ninja-build \
+    git
+
+apt-get install -y --no-install-recommends \
+    libgl-dev \
+    libz3-dev \
+    zlib1g-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libfreetype-dev \
+    libpcre2-dev \
+    libharfbuzz-dev \
+    libx11-xcb-dev \
+    libxcb-glx0-dev \
+    libxcb-cursor-dev \
+    libxcb-icccm4-dev \
+    libxcb-image0-dev \
+    libxcb-keysyms1-dev \
+    libxcb-randr0-dev \
+    libxcb-render0-dev \
+    libxcb-render-util0-dev \
+    libxcb-shape0-dev \
+    libxcb-shm0-dev \
+    libxcb-sync-dev \
+    libxcb-xfixes0-dev \
+    libxcb-xkb-dev \
+    libxcb-xinput-dev \
+    libegl1-mesa-dev \
+    libxkbcommon-dev \
+    libxkbcommon-x11-dev \
+    libfontconfig1-dev
+
+apt-get clean
+EOF
+
+# CLONE QT
+RUN <<EOF
+set -e
+
+mkdir /tmp/qt
+cd /tmp/qt
+git clone https://github.com/qt/qt5
+cd qt5
+git checkout ${QT_TAG}
+
+EOF
+
+# INIT QT REPOSITORY
+RUN <<EOF
+set -e
+
+cd /tmp/qt/qt5
+
+./init-repository --module-subset=qtbase,qtimageformats,qt5compat,qtsvg
+
+EOF
+
+# CONFIGURE & BUILD QT
+RUN <<EOF
+set -e
+
+cd /tmp/qt/qt5
+
+./configure \
+    -static \
+    -prefix /usr/local-qt \
+    -xcb \
+    -xkbcommon \
+    -qpa xcb \
+    -opensource \
+    -system-zlib \
+    -system-libjpeg \
+    -system-libpng \
+    -system-freetype \
+    -system-pcre \
+    -system-harfbuzz \
+    -system-webp \
+    -confirm-license \
+    -nomake examples \
+    -nomake tests
+
+cmake --build .
+cmake --install .
+EOF
+
+
+
+# Chatterino2
+FROM ubuntu:24.04
+
+COPY --from=build-cmake /usr/local-cmake /usr/local-cmake
+COPY --from=build-boost /usr/local-boost /usr/local-boost
+COPY --from=build-qt /usr/local-qt /usr/local-qt
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LC_ALL=en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US.UTF-8
+ENV QT_QPA_PLATFORM=minimal
+ENV PATH="/usr/local-cmake/bin:${PATH}"
+ENV Qt6_DIR="/usr/local-qt"
+ENV Boost_DIR="/usr/local-boost"
+
+RUN <<EOF
+set -e
+
+apt-get update
+
+apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    libssl-dev \
+    locales \
+    locales-all \
+    curl \
+    libbenchmark-dev \
+    git
+
+apt-get install -y --no-install-recommends \
+    libgl-dev \
+    libz3-dev \
+    zlib1g-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libfreetype-dev \
+    libpcre2-dev \
+    libwebp-dev \
+    libharfbuzz-dev
+
+apt-get install -y --no-install-recommends \
+    libsecret-1-dev
+
+apt-get install -y --no-install-recommends \
+    libgl-dev \
+    libz3-dev \
+    zlib1g-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libfreetype-dev \
+    libpcre2-dev \
+    libharfbuzz-dev \
+    libx11-xcb-dev \
+    libxcb-glx0-dev \
+    libxcb-cursor-dev \
+    libxcb-icccm4-dev \
+    libxcb-image0-dev \
+    libxcb-keysyms1-dev \
+    libxcb-randr0-dev \
+    libxcb-render0-dev \
+    libxcb-render-util0-dev \
+    libxcb-shape0-dev \
+    libxcb-shm0-dev \
+    libxcb-sync-dev \
+    libxcb-xfixes0-dev \
+    libxcb-xkb-dev \
+    libxcb-xinput-dev \
+    libegl1-mesa-dev \
+    libxkbcommon-dev \
+    libxkbcommon-x11-dev \
+    libfontconfig1-dev
+
+# For builds with desktop notification support (default)
+apt-get install -y --no-install-recommends \
+    libnotify4 \
+    libnotify-dev
+
+# Necessary for GitHub actions
+apt-get install -y --no-install-recommends \
+        sudo
+
+# Necessary for AppImage creation
+apt-get install -y --no-install-recommends \
+        file
+
+# Necessary for deb creation
+apt-get install -y --no-install-recommends \
+        lsb-release
+
+apt-get clean
+EOF
