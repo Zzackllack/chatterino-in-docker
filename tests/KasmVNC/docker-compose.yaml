@@ -2,7 +2,7 @@ services:
   chatterino:
     build: .
     ports:
-      - "3000:3000" # Web-UI (HTTP), optional per Proxy terminieren
+      - "${PORT:-3000}:3000" # Web-UI (HTTP), optional per Proxy terminieren
       # - "3001:3001"         # (falls du das integrierte HTTPS der Base nutzen willst)
     environment:
       - TZ=Europe/Berlin
