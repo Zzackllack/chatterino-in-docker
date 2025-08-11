@@ -1,0 +1,21 @@
+services:
+  webtop-chatterino:
+    build: .
+    ports:
+      - "3000:3000" # Webtop noVNC/KasmVNC
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - chatterino_data:/home/abc/.local/share/chatterino
+      - webtop_home:/config
+    # optional: Autostart
+    command: >
+      bash -lc "mkdir -p /home/abc/.config/autostart &&
+                printf '[Desktop Entry]\nType=Application\nExec=chatterino\nHidden=false\nX-GNOME-Autostart-enabled=true\nName=Chatterino\n' > /home/abc/.config/autostart/chatterino.desktop &&
+                /init"
+
+volumes:
+  chatterino_data:
+  webtop_home:
