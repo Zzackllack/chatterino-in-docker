@@ -2,14 +2,13 @@ services:
   chatterino:
     build: .
     ports:
-      - "${PORT:-3000}:3000" # Web-UI (HTTP), optional per Proxy terminieren
-      # - "3001:3001"         # (falls du das integrierte HTTPS der Base nutzen willst)
+      - "${PORT:-3000}:3000"
     environment:
       - TZ=Europe/Berlin
       - PUID=1000
       - PGID=1000
-      - CUSTOM_USER={user:-admin} # Basic-Auth für die Browser-Session
-      - PASSWORD={$PASSWORD:-pleaseChange} # <- ändern!
+      - CUSTOM_USER=${CUSTOM_USER:-admin}
+      - PASSWORD=${PASSWORD:-pleaseChange}
       - TITLE=Chatterino
       # Optional: Qt-Debuglogs in stdout (nicht Chatlogs!)
       # - QT_LOGGING_RULES=chatterino.*.debug=true
