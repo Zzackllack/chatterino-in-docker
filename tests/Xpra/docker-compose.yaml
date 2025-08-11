@@ -1,0 +1,18 @@
+services:
+  chatterino-xpra:
+    build: .
+    ports:
+      - "14500:14500" # später via Traefik terminieren
+    volumes:
+      - chatterino_data:/home/app/.local/share/chatterino
+    secrets:
+      - xpra_pass
+    environment:
+      - TZ=Europe/Berlin
+
+volumes:
+  chatterino_data:
+
+secrets:
+  xpra_pass:
+    file: ./xpra_pass.txt # Inhalt: nur das Passwort
