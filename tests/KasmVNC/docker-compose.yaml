@@ -2,7 +2,7 @@ services:
   chatterino:
     build: .
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:-3000}:3001"
     environment:
       - TZ=Europe/Berlin
       - PUID=1000
