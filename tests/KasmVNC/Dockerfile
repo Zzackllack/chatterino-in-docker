@@ -1,11 +1,9 @@
 # ./Dockerfile
 FROM ghcr.io/linuxserver/baseimage-kasmvnc:ubuntunoble
 
-# unprivileged user ist bereits "abc" mit HOME=/config
-USER root
+# WICHTIG: als root lassen, s6/init & nginx brauchen root
 RUN apt-get update && apt-get install -y curl ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# Chatterino AppImage holen und extrahieren (läuft ohne FUSE)
 WORKDIR /tmp
 RUN curl -L -o Chatterino.AppImage \
   https://chatterino.fra1.digitaloceanspaces.com/bin/2.5.3/Chatterino-x86_64.AppImage \
@@ -15,9 +13,6 @@ RUN curl -L -o Chatterino.AppImage \
   && ln -s /opt/chatterino/AppRun /usr/local/bin/chatterino \
   && rm -f Chatterino.AppImage
 
-# Single-App Autostart definieren
 RUN mkdir -p /root/defaults \
-  && bash -lc 'echo chatterino > /root/defaults/autostart'
-
-USER abc
-WORKDIR /config
+  && echo chatterino > /root/defaults/autostart
+# KEIN "USER abc" hier!
