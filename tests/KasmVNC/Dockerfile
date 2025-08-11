@@ -52,3 +52,12 @@ if id abc >/dev/null 2>&1; then
 fi
 EOF
 RUN chmod +x /etc/cont-init.d/30-chatterino
+
+RUN sed -i '1i\
+# patch nginx upstream auf den laufenden kasmvnc-port\n\
+if command -v ss >/dev/null 2>&1; then\n\
+  if ss -ltn | grep -q ":6901"; then KASM_PORT=6901; else KASM_PORT=3001; fi\n\
+  if [ -f /etc/nginx/sites-available/default ]; then\n\
+    sed -i "s|127.0.0.1:3001|127.0.0.1:${KASM_PORT}|g" /etc/nginx/sites-available/default || true\n\
+  fi\n\
+fi\n' /etc/cont-init.d/30-chatterino
