@@ -4,6 +4,7 @@ services:
     ports:
       - "${PORT:-3000}:3000"
       - "${BASEIMAGE_PORT:-3001}:3001"
+      - "${KASM_PORT:-6901}:6901" 
     environment:
       - TZ=Europe/Berlin
       - PUID=1000
