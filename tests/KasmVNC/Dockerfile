@@ -53,11 +53,30 @@ fi
 EOF
 RUN chmod +x /etc/cont-init.d/30-chatterino
 
-RUN sed -i '1i\
-# patch nginx upstream auf den laufenden kasmvnc-port\n\
-if command -v ss >/dev/null 2>&1; then\n\
-  if ss -ltn | grep -q ":6901"; then KASM_PORT=6901; else KASM_PORT=3001; fi\n\
-  if [ -f /etc/nginx/sites-available/default ]; then\n\
-    sed -i "s|127.0.0.1:3001|127.0.0.1:${KASM_PORT}|g" /etc/nginx/sites-available/default || true\n\
+RUN bash -lc 'cat > /etc/cont-init.d/31-nginx-upstream <<'\''EOF'\''\n\
+#!/usr/bin/with-contenv bash\n\
+set -e\n\
+echo \"[init] nginx-upstream check...\" >&2\n\
+# finde laufenden KasmVNC-Port\n\
+KASM_PORT=\"\"\n\
+for p in 6901 6900 3001; do\n\
+  if ss -ltn | grep -q \":$p\"; then KASM_PORT=\"$p\"; break; fi\n\
+done\n\
+if [ -z \"$KASM_PORT\" ]; then\n\
+  echo \"[init] kein kasmvnc-port gefunden (6901/6900/3001)\" >&2\n\
+  exit 1\n\
+fi\n\
+echo \"[init] kasmvnc-port = $KASM_PORT\" >&2\n\
+# mögliche Site-Dateien patchen\n\
+for f in /etc/nginx/sites-available/default /etc/nginx/conf.d/default.conf; do\n\
+  if [ -f \"$f\" ]; then\n\
+    sed -ri \"s|127\\\\.0\\\\.0\\\\.1:(6900|6901|3001)|127.0.0.1:${KASM_PORT}|g\" \"$f\" || true\n\
+    echo \"[init] patched: $f -> 127.0.0.1:${KASM_PORT}\" >&2\n\
   fi\n\
-fi\n' /etc/cont-init.d/30-chatterino
+done\n\
+# Konfiguration prüfen (startet erst nach cont-init, reload hier nicht nötig)\n\
+nginx -t && echo \"[init] nginx conf ok\" >&2 || { echo \"[init] nginx conf FEHLER\" >&2; exit 1; }\n\
+# Debug-Ausgabe\n\
+grep -R \"proxy_pass\" /etc/nginx 2>/dev/null | sed -n \"1,200p\" >&2\n\
+EOF\n\
+chmod +x /etc/cont-init.d/31-nginx-upstream'

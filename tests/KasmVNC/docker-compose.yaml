@@ -2,7 +2,8 @@ services:
   chatterino:
     build: .
     ports:
-      - "${PORT:-3000}:3001"
+      - "${PORT:-3000}:3000"
+      - "${BASEIMAGE_PORT:-3001}:3001"
     environment:
       - TZ=Europe/Berlin
       - PUID=1000
@@ -10,7 +11,6 @@ services:
       - CUSTOM_USER=${CUSTOM_USER:-admin}
       - PASSWORD=${PASSWORD:-pleaseChange}
       - TITLE=Chatterino
-      # >>> wichtig für Persistenz:
       - HOME=/config
       - XDG_CONFIG_HOME=/config/.config
       - XDG_DATA_HOME=/config/.local/share
