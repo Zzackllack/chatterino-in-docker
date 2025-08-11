@@ -10,8 +10,11 @@ services:
       - CUSTOM_USER=${CUSTOM_USER:-admin}
       - PASSWORD=${PASSWORD:-pleaseChange}
       - TITLE=Chatterino
-      # Optional: Qt-Debuglogs in stdout (nicht Chatlogs!)
-      # - QT_LOGGING_RULES=chatterino.*.debug=true
+      # >>> wichtig für Persistenz:
+      - HOME=/config
+      - XDG_CONFIG_HOME=/config/.config
+      - XDG_DATA_HOME=/config/.local/share
+      - XDG_CACHE_HOME=/config/.cache
     volumes:
-      - ./chatterino-data:/config # $HOME => /config (enthält Settings & Logs)
+      - ./chatterino-data:/config
     restart: unless-stopped
