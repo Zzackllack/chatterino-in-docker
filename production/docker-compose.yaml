@@ -1,0 +1,21 @@
+services:
+  chatterino:
+    build: .
+    ports:
+      - "${PORT:-3000}:3000"
+      - "${BASEIMAGE_PORT:-3001}:3001"
+      - "${KASM_PORT:-6901}:6901" 
+    environment:
+      - TZ=Europe/Berlin
+      - PUID=1000
+      - PGID=1000
+      - CUSTOM_USER=${CUSTOM_USER:-admin}
+      - PASSWORD=${PASSWORD:-pleaseChange}
+      - TITLE=Chatterino
+      - HOME=/config
+      - XDG_CONFIG_HOME=/config/.config
+      - XDG_DATA_HOME=/config/.local/share
+      - XDG_CACHE_HOME=/config/.cache
+    volumes:
+      - ./chatterino-data:/config
+    restart: unless-stopped   
