@@ -1,0 +1,25 @@
+#!/usr/bin/with-contenv bash
+set -e
+
+: "${HOME:=/config}"
+: "${XDG_CONFIG_HOME:=$HOME/.config}"
+: "${XDG_DATA_HOME:=$HOME/.local/share}"
+: "${XDG_CACHE_HOME:=$HOME/.cache}"
+
+# Migrate before mkdir; creating the target first made this branch unreachable.
+if [ -d "/home/abc/.local/share/chatterino" ] && [ ! -d "$XDG_DATA_HOME/chatterino" ]; then
+  mkdir -p "$XDG_DATA_HOME"
+  cp -a "/home/abc/.local/share/chatterino" "$XDG_DATA_HOME/"
+fi
+
+mkdir -p "$XDG_CONFIG_HOME/openbox" \
+         "$XDG_DATA_HOME/chatterino/Settings" \
+         "$XDG_DATA_HOME/chatterino/Logs" \
+         "$XDG_CACHE_HOME"
+
+cat > "$XDG_CONFIG_HOME/openbox/autostart" <<'EOF'
+chatterino &
+EOF
+
+# s6 runs this after init-config, once PUID/PGID have been applied to abc.
+chown -R abc:abc "$HOME/.config" "$HOME/.local" "$HOME/.cache"
