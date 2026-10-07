@@ -1,0 +1,59 @@
+name: Container
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  container:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Test health service and Compose configuration
+        env:
+          PASSWORD: ci-only-placeholder
+        run: |
+          python3 -m unittest discover -s production/tests -v
+          docker compose -f production/docker-compose.yaml config --quiet
+
+      - name: Build native amd64 image
+        run: |
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+          docker build --platform linux/amd64 \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.title=Chatterino in Docker" \
+            --tag "ghcr.io/${GITHUB_REPOSITORY,,}:sha-$GITHUB_SHA" production
+
+      - name: Smoke test built image
+        run: python3 production/tests/smoke_container.py "$IMAGE:sha-$GITHUB_SHA"
+
+      # Push the tested image itself. PR builds never log in or publish.
+      - name: Publish image
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io' EXIT
+          docker push "$IMAGE:sha-$GITHUB_SHA"
+          docker tag "$IMAGE:sha-$GITHUB_SHA" "$IMAGE:latest"
+          docker push "$IMAGE:latest"
+          printf 'Published `%s:latest` and `%s:sha-%s` (linux/amd64).\n' \
+            "$IMAGE" "$IMAGE" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"

@@ -27,23 +27,28 @@ settings return 503 with `status: "unknown"` and `logged_in: null`: these mean t
 check could not establish login health. A stopped Chatterino process also fails.
 No response or routine log includes the OAuth token.
 
-## Build and monitor
+## Run and monitor
 
 Copy `.env.example` to `.env` and set `CHATTERINO_HEALTH_ACCOUNT` to your Twitch
 login and `PASSWORD` to your desktop password. The `.env` file is Git-ignored.
 
-From this directory, rebuild and recreate the container:
+From this directory, pull the published image and start the container:
 
 ```sh
-docker compose up -d --build
+docker compose pull
+docker compose up -d --no-build
 curl -i http://127.0.0.1:8080/health
 ```
 
+The image is published at `ghcr.io/zzackllack/chatterino-in-docker:latest`.
+Each successful `main` build also publishes `sha-<full-commit-sha>`.
+Compose requires an explicit desktop password; it will fail if `PASSWORD` is empty.
+
 The bundled AppImage is x86-64, so this image targets an amd64 Docker host.
-Docker Desktop's Rosetta emulation on this Mac rejected the AppImage runtime
-with `Exec format error`; container smoke checks used a temporary extraction
-workaround outside the repository. The production Dockerfile retains the upstream
-AppImage extraction command. No Twitch app registration, extra token, or client
+To build locally, use `docker compose up -d --build` on an amd64 host.
+Building under Docker Desktop's Rosetta emulation can fail during AppImage
+extraction with `Exec format error`; use the published image in that case.
+No Twitch app registration, extra token, or client
 secret is needed; the check reads Chatterino's existing credentials as the `abc` user.
 
 Use either of these URLs in an HTTP monitor expecting **200**:
@@ -58,7 +63,7 @@ Use either of these URLs in an HTTP monitor expecting **200**:
   to reach it. This port has no authentication; keep it on your private network.
 
 If a separate reverse proxy routes to the health service, explicitly select
-container port **8080**. The desktop continues to use port **3000**. Existing
+container port **8080**. The desktop continues to use port **3000**.
 Configure reverse proxy routing separately from the desktop container.
 
 The Docker healthcheck uses this same endpoint. Expired login credentials mark
@@ -99,10 +104,22 @@ desktop starts, to avoid leaving account directories owned by the old UID.
 
 ```sh
 uv run --no-project python -m unittest discover -s tests -v
-docker compose config --quiet
+PASSWORD=local-check docker compose config --quiet
 ```
 
 The tests use fake credentials and mocked Twitch responses. They verify expired
 tokens, unknown results, account switching, cache invalidation/expiry, process
 detection, secret omission, and HTTP 200/503 behavior. They do not verify your
 live Twitch account or a deployed container.
+
+GitHub Actions additionally builds the production Dockerfile on native amd64
+and starts the resulting image. Its smoke test checks Chatterino startup, file
+ownership, nginx configuration, logged-out health reporting, and desktop Basic
+Auth on both HTTP and HTTPS before publishing the tested image.
+
+## Upstream software
+
+This is an independent container setup for [Chatterino](https://chatterino.com/).
+It bundles the unmodified Chatterino 2.5.3 AppImage; the corresponding source and
+license are available in the [upstream v2.5.3 tree](https://github.com/Chatterino/chatterino2/tree/v2.5.3).
+The desktop base is [LinuxServer's KasmVNC image](https://github.com/linuxserver/docker-baseimage-kasmvnc).
