@@ -5,6 +5,9 @@ and monitor whether the selected Twitch account's saved credentials are still va
 
 The current setup is in [`production/`](production/README.md):
 
+Copy `production/.env.example` to `production/.env` and set your Twitch login
+and desktop password before starting the container.
+
 ```sh
 cd production
 docker compose up -d --build

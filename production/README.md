@@ -29,6 +29,9 @@ No response or routine log includes the OAuth token.
 
 ## Build and monitor
 
+Copy `.env.example` to `.env` and set `CHATTERINO_HEALTH_ACCOUNT` to your Twitch
+login and `PASSWORD` to your desktop password. The `.env` file is Git-ignored.
+
 From this directory, rebuild and recreate the container:
 
 ```sh
@@ -46,8 +49,9 @@ secret is needed; the check reads Chatterino's existing credentials as the `abc`
 Use either of these URLs in an HTTP monitor expecting **200**:
 
 - `https://<existing-chatterino-host>/health` through the existing nginx proxy.
-  This inherits desktop Basic Auth and any authentication enabled at your reverse proxy. The
-  monitor must authenticate; a redirect to a login page is not a successful check.
+  This inherits desktop Basic Auth and any authentication enabled at your reverse
+  proxy. The monitor must authenticate; a redirect to a login page is not a
+  successful check.
 - `http://<private-host>:8080/health` for direct monitoring. Compose binds this port
   to `127.0.0.1` by default. For a monitor on another machine, set
   `HEALTH_BIND_ADDRESS` to the server's private/NetBird IP and allow that monitor

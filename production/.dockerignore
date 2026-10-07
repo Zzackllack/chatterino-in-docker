@@ -1,3 +1,5 @@
 chatterino-data/
 tests/
 **/__pycache__/
+.env
+.env.*
