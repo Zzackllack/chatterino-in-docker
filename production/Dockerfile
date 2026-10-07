@@ -5,7 +5,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp
-RUN curl -L -o Chatterino.AppImage \
+RUN curl --fail --location --retry 3 -o Chatterino.AppImage \
   https://chatterino.fra1.digitaloceanspaces.com/bin/2.5.3/Chatterino-x86_64.AppImage \
   && chmod +x Chatterino.AppImage \
   && ./Chatterino.AppImage --appimage-extract \
@@ -14,6 +14,7 @@ RUN curl -L -o Chatterino.AppImage \
   && rm -f Chatterino.AppImage
 
 RUN echo 'chatterino &' > /defaults/autostart
+COPY licenses /usr/share/doc/chatterino/licenses
 
 COPY health /opt/chatterino-health
 RUN mkdir -p /etc/s6-overlay/s6-rc.d/svc-chatterino-health/dependencies.d \
@@ -25,6 +26,8 @@ RUN mkdir -p /etc/s6-overlay/s6-rc.d/svc-chatterino-health/dependencies.d \
  && sed -i '/  location \/ {/i\  include /opt/chatterino-health/nginx-health.conf;' /defaults/default.conf
 
 EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=12s --start-period=20s --retries=3 \
+  CMD curl --fail --silent --max-time 10 http://127.0.0.1:8080/health || exit 1
 
 COPY init-chatterino /etc/s6-overlay/s6-rc.d/init-chatterino/run
 RUN chmod +x /etc/s6-overlay/s6-rc.d/init-chatterino/run \

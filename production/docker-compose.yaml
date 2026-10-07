@@ -1,5 +1,7 @@
 services:
   chatterino:
+    image: ghcr.io/zzackllack/chatterino-in-docker:latest
+    platform: linux/amd64
     build: .
     ports:
       - "${PORT:-3000}:3000"
@@ -12,7 +14,7 @@ services:
       - PUID=1000
       - PGID=1000
       - CUSTOM_USER=${CUSTOM_USER:-admin}
-      - PASSWORD=${PASSWORD:-pleaseChange}
+      - PASSWORD=${PASSWORD:?Set PASSWORD in .env before starting Chatterino}
       - TITLE=Chatterino
       - HOME=/config
       - XDG_CONFIG_HOME=/config/.config
