@@ -55,5 +55,5 @@ jobs:
           docker push "$IMAGE:sha-$GITHUB_SHA"
           docker tag "$IMAGE:sha-$GITHUB_SHA" "$IMAGE:latest"
           docker push "$IMAGE:latest"
-          printf 'Published `%s:latest` and `%s:sha-%s` (linux/amd64).\n' \
+          printf 'Published %s:latest and %s:sha-%s (linux/amd64).\n' \
             "$IMAGE" "$IMAGE" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
